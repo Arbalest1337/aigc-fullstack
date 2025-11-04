@@ -15,6 +15,9 @@ import { PostScheduleModule } from './modules/post-schedule/post-schedule.module
 import { UserModule } from './modules/user/user.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { SongModule } from './modules/song/song.module'
+import { StripeModule } from './modules/stripe/stripe.module'
+import { SubscriptionModule } from './modules/subscription/subscription.module'
+import { RedemptionCodeModule } from './modules/redemption-code/redemption-code.module'
 
 @Module({
   imports: [
@@ -34,7 +37,10 @@ import { SongModule } from './modules/song/song.module'
     PostScheduleModule,
     UserModule,
     AuthModule,
-    SongModule
+    SongModule,
+    StripeModule,
+    SubscriptionModule,
+    RedemptionCodeModule
   ],
   controllers: [AppController],
   providers: [

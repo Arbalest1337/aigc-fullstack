@@ -23,7 +23,7 @@ export const WanText2Image = async (prompt: string) => {
     method: 'POST',
     headers,
     body: JSON.stringify({
-      model: 'wanx2.1-t2i-turbo1',
+      model: 'wanx2.1-t2i-turbo',
       input: { prompt },
       parameters: {
         n: 1

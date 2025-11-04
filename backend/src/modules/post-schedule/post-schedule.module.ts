@@ -7,9 +7,15 @@ import { PostScheduleProducer } from './post-schedule.producer'
 import { PostScheduleProcessor } from './post-schedule.processor'
 import { S3Module } from '../s3/s3.module'
 import { QUEUE_TASK } from 'src/utils/queue'
+import { SubscriptionModule } from '../subscription/subscription.module'
 
 @Module({
-  imports: [BullModule.registerQueue({ name: QUEUE_TASK.POST_SCHEDULE }), PostModule, S3Module],
+  imports: [
+    BullModule.registerQueue({ name: QUEUE_TASK.POST_SCHEDULE }),
+    PostModule,
+    S3Module,
+    SubscriptionModule
+  ],
   controllers: [PostScheduleController],
   providers: [PostScheduleService, PostScheduleProducer, PostScheduleProcessor]
 })

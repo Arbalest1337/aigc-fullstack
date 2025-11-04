@@ -6,7 +6,7 @@ import { HttpStatus } from '@nestjs/common'
 import { AuthGuard } from './guard/auth.guard'
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule)
+  const app = await NestFactory.create(AppModule, { rawBody: true })
   app.use((req, res, next) => {
     if (req.path.startsWith('/.well-known/')) return res.status(HttpStatus.NOT_FOUND).end()
     next()

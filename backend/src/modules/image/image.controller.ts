@@ -4,12 +4,14 @@ import { GenerateImageDto, generateImageSchema } from 'src/modules/image/image.s
 import { CurrentUser } from 'src/decorators/currentUser.decorator'
 import { Auth } from 'src/decorators/auth.decorator'
 import { ZodBody } from 'src/decorators/zod-body.decorator'
+import { RequireSubscription } from '../subscription/subscription.decorator'
 
 @Auth()
 @Controller('image')
 export class ImageController {
   constructor(private readonly imageService: ImageService) {}
 
+  @RequireSubscription()
   @Post('text-to-image')
   async textToImage(
     @ZodBody(generateImageSchema) body: GenerateImageDto,

@@ -21,6 +21,14 @@ export default function Home() {
     {
       name: 'Post Schedule',
       path: '/post-schedule'
+    },
+    {
+      name: 'Stripe',
+      path: '/stripe'
+    },
+    {
+      name: 'Redemption Code',
+      path: '/redemption-code'
     }
   ]
 

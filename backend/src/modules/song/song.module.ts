@@ -6,9 +6,10 @@ import { SongProcessor } from './song.processor'
 import { S3Module } from '../s3/s3.module'
 import { SongProducer } from './song.producer'
 import { QUEUE_TASK } from 'src/utils/queue'
+import { SubscriptionModule } from '../subscription/subscription.module'
 
 @Module({
-  imports: [BullModule.registerQueue({ name: QUEUE_TASK.SONG }), S3Module],
+  imports: [BullModule.registerQueue({ name: QUEUE_TASK.SONG }), S3Module, SubscriptionModule],
   controllers: [SongController],
   providers: [SongService, SongProducer, SongProcessor]
 })

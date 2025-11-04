@@ -10,6 +10,7 @@ import { PostScheduleProducer } from './post-schedule.producer'
 import { CurrentUser } from 'src/decorators/currentUser.decorator'
 import { Auth } from 'src/decorators/auth.decorator'
 import { ZodBody } from 'src/decorators/zod-body.decorator'
+import { RequireSubscription } from '../subscription/subscription.decorator'
 
 @Auth()
 @Controller('post-schedule')
@@ -19,6 +20,7 @@ export class PostScheduleController {
     private readonly postScheduleProducer: PostScheduleProducer
   ) {}
 
+  @RequireSubscription()
   @Post('create')
   async createPostSchedule(
     @ZodBody(createPostScheduleSchema) body: CreatePostScheduleDto,
@@ -40,6 +42,7 @@ export class PostScheduleController {
     return res
   }
 
+  @RequireSubscription()
   @Post('process')
   async add(@Body() body) {
     const { id } = body

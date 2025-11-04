@@ -9,18 +9,21 @@ import {
 import { CurrentUser } from 'src/decorators/currentUser.decorator'
 import { Auth } from 'src/decorators/auth.decorator'
 import { ZodBody } from 'src/decorators/zod-body.decorator'
+import { RequireSubscription } from '../subscription/subscription.decorator'
 
 @Auth()
 @Controller('video')
 export class VideoController {
   constructor(private readonly videoService: VideoService) {}
 
+  @RequireSubscription()
   @Post('text-to-video')
   async textToVideo(@ZodBody(textToVideoSchema) params: TextToVideoDto, @CurrentUser() user) {
     const res = await this.videoService.textToVideo({ ...params, creatorId: user.id })
     return res
   }
 
+  @RequireSubscription()
   @Post('image-to-video')
   async imageToVideo(@ZodBody(imageToVideoSchema) params: ImageToVideoDto, @CurrentUser() user) {
     const res = await this.videoService.imageToVideo({ ...params, creatorId: user.id })

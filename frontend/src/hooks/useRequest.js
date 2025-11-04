@@ -1,7 +1,7 @@
 import { getJwt, clearJwt } from '@/utils/jwt'
 import { useRouter } from 'next/navigation'
 
-const BASE_URL = 'http://localhost:4000'
+const BASE_URL = 'http://localhost:4004'
 
 export default function useRequest() {
   const router = useRouter()

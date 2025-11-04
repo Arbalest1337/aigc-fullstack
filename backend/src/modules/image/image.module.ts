@@ -6,9 +6,10 @@ import { ImageProducer } from './image.producer'
 import { ImageProcessor } from './image.processor'
 import { S3Module } from '../s3/s3.module'
 import { QUEUE_TASK } from 'src/utils/queue'
+import { SubscriptionModule } from '../subscription/subscription.module'
 
 @Module({
-  imports: [BullModule.registerQueue({ name: QUEUE_TASK.IMAGE }), S3Module],
+  imports: [BullModule.registerQueue({ name: QUEUE_TASK.IMAGE }), S3Module, SubscriptionModule],
   controllers: [ImageController],
   providers: [ImageService, ImageProducer, ImageProcessor]
 })
