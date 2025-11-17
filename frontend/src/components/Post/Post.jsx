@@ -31,7 +31,7 @@ export default function Post({ post }) {
                 <div>{post.repostCreatorId}</div>
               </>
             )}
-            <div className="text-gray-400">{new Date(post.createTime).toLocaleString()}</div>
+            <div className="text-gray-400">{new Date(post.createdAt).toLocaleString()}</div>
           </div>
         </div>
         <div dangerouslySetInnerHTML={{ __html: mdContent }}></div>

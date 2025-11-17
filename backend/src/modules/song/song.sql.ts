@@ -18,6 +18,6 @@ export const getSongByTaskId = async taskId => {
 }
 
 export const querySongs = async params => {
-  const res = await db.select().from(SongTable).orderBy(desc(SongTable.createTime))
+  const res = await db.select().from(SongTable).orderBy(desc(SongTable.createdAt))
   return res
 }

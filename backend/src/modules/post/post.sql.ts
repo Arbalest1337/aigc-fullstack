@@ -54,11 +54,11 @@ export const getPostAndRepost = async params => {
       ...getTableColumns(PostTable),
       repostId: RepostTable.id,
       repostCreatorId: RepostTable.creatorId,
-      createTime: RepostTable.createTime
+      createdAt: RepostTable.createdAt
     })
     .from(RepostTable)
     .innerJoin(PostTable, eq(RepostTable.postId, PostTable.id))
   const combine = unionAll(postSubQuery, repostSubQuery).as('combine')
-  const res = await db.select().from(combine).orderBy(desc(combine.createTime))
+  const res = await db.select().from(combine).orderBy(desc(combine.createdAt))
   return res
 }

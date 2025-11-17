@@ -14,7 +14,6 @@ export default function SubscriptionPlans({ planId, setPlanId }) {
         method: 'GET'
       })
       setPlans(plans)
-      console.log({ plans })
     } finally {
       setLoading(false)
     }

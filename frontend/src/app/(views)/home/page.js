@@ -32,7 +32,7 @@ export default function Home() {
         <>
           <h4>UserId: {userInfo.id}</h4>
           <h4>Nickname: {userInfo.nickname}</h4>
-          <h4>CreateTime: {userInfo.createTime}</h4>
+          <h4>CreatedAt: {userInfo.createdAt}</h4>
         </>
       )}
     </>

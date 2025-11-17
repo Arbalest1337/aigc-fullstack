@@ -4,4 +4,4 @@ import { ulid } from './index'
 export const creatorId = (name?: string) =>
   ulid(name)
     .notNull()
-    .references(() => UserTable.id)
+    .references(() => UserTable.id, { onDelete: 'cascade' })

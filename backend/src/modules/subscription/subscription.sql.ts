@@ -4,11 +4,6 @@ import { SubscriptionPaymentsTable } from 'src/db/schema/subscription-payments'
 import { SubscriptionPlansTable } from 'src/db/schema/subscription-plans'
 import { SubscriptionsTable } from 'src/db/schema/subscriptions'
 
-export const getCurrentDbTime = async () => {
-  const result = await db.execute(sql`SELECT NOW() as "dbNow"`)
-  return result?.rows?.[0]?.dbNow as string
-}
-
 export const insertSubscription = async ({ userId, expiresAt }) => {
   const [res] = await db
     .insert(SubscriptionsTable)

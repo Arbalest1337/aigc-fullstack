@@ -12,12 +12,12 @@ export const primaryId = (name?: string) =>
     .primaryKey()
     .default(sql`gen_ulid()`)
 
-export const createTime = (name?: string) =>
+export const createdAt = (name?: string) =>
   timestamp(name, { withTimezone: true })
     .notNull()
     .default(sql`now()`)
 
-export const updateTime = (name?: string) =>
+export const updatedAt = (name?: string) =>
   timestamp(name, { mode: 'string', withTimezone: true })
     .notNull()
     .$onUpdate(() => sql`now()`)

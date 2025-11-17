@@ -20,7 +20,7 @@ export const getImageByTaskId = async taskId => {
 }
 
 export const queryImages = async params => {
-  const res = await db.select().from(ImageTable).orderBy(desc(ImageTable.createTime))
+  const res = await db.select().from(ImageTable).orderBy(desc(ImageTable.createdAt))
   return res.map(key2Url)
 }
 

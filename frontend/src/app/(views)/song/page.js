@@ -22,7 +22,6 @@ export default function Song() {
           lyrics
         }
       })
-      console.log(id)
       querySongs()
     } finally {
       setLoading(false)

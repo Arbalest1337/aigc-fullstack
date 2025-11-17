@@ -1,12 +1,12 @@
 import { pgTable, vector, index } from 'drizzle-orm/pg-core'
 import { PostTable } from './post'
-import { ulid, primaryId, createTime } from '../custom'
+import { ulid, primaryId, createdAt } from '../custom'
 
 export const PostEmbeddingTable = pgTable(
   'post_embedding',
   {
     id: primaryId(),
-    createTime: createTime(),
+    createdAt: createdAt(),
     embedding: vector({ dimensions: 1536 }),
     postId: ulid()
       .notNull()

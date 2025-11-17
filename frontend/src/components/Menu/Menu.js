@@ -29,6 +29,14 @@ export default function Home() {
     {
       name: 'Redemption Code',
       path: '/redemption-code'
+    },
+    {
+      name: 'X (Twitter)',
+      path: '/x'
+    },
+    {
+      name: 'Rate Limit',
+      path: '/rate-limit'
     }
   ]
 

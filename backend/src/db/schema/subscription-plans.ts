@@ -1,13 +1,13 @@
 import { pgTable, integer, jsonb, boolean, check,text } from 'drizzle-orm/pg-core'
-import { primaryId, createTime, updateTime } from '../custom'
+import { primaryId, createdAt, updatedAt } from '../custom'
 import { sql } from 'drizzle-orm'
 
 export const SubscriptionPlansTable = pgTable(
   'subscription_plans',
   {
     id: primaryId(),
-    createTime: createTime(),
-    updateTime: updateTime(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
     detail: jsonb(),
     price: integer().notNull(),
     duration: integer().notNull(),

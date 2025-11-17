@@ -30,7 +30,6 @@ export default function CheckoutForm() {
         setErrorMessage(error.message)
         return
       }
-      console.log('success !!!', paymentIntent.id)
       onSuccess(paymentIntent.id)
     } finally {
       setLoading(false)

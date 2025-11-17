@@ -1,5 +1,5 @@
 import { pgTable, jsonb, text } from 'drizzle-orm/pg-core'
-import { primaryId, createTime } from '../custom'
+import { primaryId, createdAt } from '../custom'
 import { creatorId } from '../custom/user'
 
 export const VideoTable = pgTable('video', {
@@ -10,5 +10,5 @@ export const VideoTable = pgTable('video', {
   detail: jsonb(),
   prompt: text().notNull(),
   creatorId: creatorId(),
-  createTime: createTime()
+  createdAt: createdAt()
 })

@@ -3,7 +3,7 @@ import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { BullModule } from '@nestjs/bullmq'
 import { LoggerMiddleware } from './middleware/logger.middleware'
-import { APP_FILTER } from '@nestjs/core'
+import { APP_FILTER, APP_GUARD } from '@nestjs/core'
 import { AllExceptionFilter } from './middleware/exception.filter'
 import { S3Module } from './modules/s3/s3.module'
 import { VideoModule } from './modules/video/video.module'
@@ -18,7 +18,11 @@ import { SongModule } from './modules/song/song.module'
 import { StripeModule } from './modules/stripe/stripe.module'
 import { SubscriptionModule } from './modules/subscription/subscription.module'
 import { RedemptionCodeModule } from './modules/redemption-code/redemption-code.module'
-
+import { XModule } from './modules/x/x.module'
+import { RedisModule } from './modules/redis/redis.module'
+import { RateLimitModule } from './modules/rate-limit/rate-limit.module'
+import { ThrottlerModule } from '@nestjs/throttler'
+import { RateLimitGuard } from './modules/rate-limit/rate-limit.guard'
 @Module({
   imports: [
     BullModule.forRoot({
@@ -28,7 +32,16 @@ import { RedemptionCodeModule } from './modules/redemption-code/redemption-code.
         url: process.env.REDIS_URL
       }
     }),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60_000,
+          limit: 1000
+        }
+      ]
+    }),
     ScheduleModule.forRoot(),
+    RedisModule,
     SchedulerModule,
     S3Module,
     VideoModule,
@@ -40,13 +53,19 @@ import { RedemptionCodeModule } from './modules/redemption-code/redemption-code.
     SongModule,
     StripeModule,
     SubscriptionModule,
-    RedemptionCodeModule
+    RedemptionCodeModule,
+    XModule,
+    RateLimitModule
   ],
   controllers: [AppController],
   providers: [
     {
       provide: APP_FILTER,
       useClass: AllExceptionFilter
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RateLimitGuard
     },
     AppService
   ]

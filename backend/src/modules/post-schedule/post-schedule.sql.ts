@@ -58,7 +58,7 @@ export const getSimilarityPostBySchedule = async schedule => {
         isNull(RepostTable.postId),
         gt(similarity, 0.5),
         ne(PostTable.creatorId, creatorId),
-        gt(PostEmbeddingTable.createTime, sql`now() - interval '3 day'`)
+        gt(PostEmbeddingTable.createdAt, sql`now() - interval '3 day'`)
       )
     )
     .orderBy(t => desc(t.similarity))

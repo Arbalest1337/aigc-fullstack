@@ -1,5 +1,5 @@
 import { pgTable, text, pgEnum } from 'drizzle-orm/pg-core'
-import { primaryId, createTime, updateTime, ulid } from '../custom'
+import { primaryId, createdAt, updatedAt, ulid } from '../custom'
 import { creatorId } from '../custom/user'
 import { UserTable } from './user'
 
@@ -16,8 +16,8 @@ export const RedemptionCodeStatusEnum = pgEnum('redemption_code_status', [
 export const RedemptionCodeTable = pgTable('redemption_code', {
   id: primaryId(),
   creatorId: creatorId(),
-  createTime: createTime(),
-  updateTime: updateTime(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
   redeemerId: ulid().references(() => UserTable.id, { onDelete: 'set null' }),
   hashedCode: text().notNull().unique(),
   status: RedemptionCodeStatusEnum().notNull().default(RedemptionCodeStatus.Unused)

@@ -1,5 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
-import { S3Client, DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import {
+  S3Client,
+  DeleteObjectCommand,
+  PutObjectCommand,
+  GetObjectCommand
+} from '@aws-sdk/client-s3'
 import { v4 as uuidV4 } from 'uuid'
 import { fromBuffer } from 'file-type'
 
@@ -54,5 +59,14 @@ export class S3Service {
       Key: key
     })
     await this.client.send(command)
+  }
+
+  async get(key: string) {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key
+    })
+    const res = await this.client.send(command)
+    return res
   }
 }

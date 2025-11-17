@@ -1,11 +1,11 @@
 import { pgTable, timestamp } from 'drizzle-orm/pg-core'
-import { primaryId, createTime, updateTime, ulid } from '../custom'
+import { primaryId, createdAt, updatedAt, ulid } from '../custom'
 import { UserTable } from './user'
 
 export const SubscriptionsTable = pgTable('subscriptions', {
   id: primaryId(),
-  createTime: createTime(),
-  updateTime: updateTime(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
   userId: ulid().references(() => UserTable.id, { onDelete: 'cascade' }),
   expiresAt: timestamp({
     withTimezone: true,

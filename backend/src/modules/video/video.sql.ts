@@ -20,6 +20,6 @@ export const getVideoByTaskId = async taskId => {
 }
 
 export const queryVideos = async params => {
-  const res = await db.select().from(VideoTable).orderBy(desc(VideoTable.createTime))
+  const res = await db.select().from(VideoTable).orderBy(desc(VideoTable.createdAt))
   return res
 }
