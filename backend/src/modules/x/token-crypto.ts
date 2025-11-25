@@ -1,6 +1,6 @@
 import { randomBytes, createCipheriv, createDecipheriv, createHash } from 'crypto'
 
-const ENV_KEY = process.env.TOKEN_ENC_KEY
+const ENV_KEY = process.env.OAUTH_TOKEN_ENC_KEY
 const KEY = createHash('sha256').update(ENV_KEY, 'utf8').digest()
 
 const IV_LEN = 12

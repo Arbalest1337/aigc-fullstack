@@ -1,6 +1,8 @@
 'use client'
 import Unauthorized from './components/Unauthorized'
-import Authorized from './components/Authorized'
+import AccountInfo from './components/Authorized/AccountInfo'
+import CreateTweet from './components/Authorized/CreateTweet'
+import PostToTweet from './components/Authorized/PostToTweet'
 import useRequest from '@/hooks/useRequest'
 import { useRouter } from 'next/navigation'
 
@@ -42,7 +44,6 @@ export default function XPage() {
           state
         }
       })
-      // alert('Authentication succeeded !')
       router.replace('/x')
     } finally {
       setLoading(false)
@@ -66,7 +67,13 @@ export default function XPage() {
     <div className="flex flex-col gap-8 p-8">
       {loading && <div>Loading...</div>}
       {!loading && <Unauthorized />}
-      {!loading && account && <Authorized account={account} />}
+      {!loading && account && (
+        <>
+          <AccountInfo account={account} />
+          <CreateTweet />
+          <PostToTweet />
+        </>
+      )}
     </div>
   )
 }

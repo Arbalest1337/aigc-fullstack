@@ -15,16 +15,16 @@ export class XService {
     private readonly s3Service: S3Service
   ) {
     this.oauth2 = new OAuth2({
-      clientId: process.env.X_CLIENT_ID,
-      clientSecret: process.env.X_CLIENT_SECRET,
-      redirectUri: 'http://127.0.0.1:3003/x',
+      clientId: process.env.OAUTH_TWITTER_CLIENT_ID,
+      clientSecret: process.env.OAUTH_TWITTER_CLIENT_SECRET,
+      redirectUri: process.env.OAUTH_TWITTER_REDIRECT_URI,
       scope: ['tweet.read', 'tweet.write', 'media.write', 'users.read', 'offline.access']
     })
   }
 
   // Redis
   generateXOauth2Key({ state, userId }) {
-    return `x-oauth2:${userId}-${state}`
+    return `oauth-x:${userId}-${state}`
   }
 
   async setCodeVerifierToRedis({ state, codeVerifier, userId }) {
@@ -34,11 +34,12 @@ export class XService {
 
   async getAndRemoveCodeVerifierFromRedis({ state, userId }) {
     const key = this.generateXOauth2Key({ state, userId })
-    const result = await this.redisService.get(key)
-    if (result) {
+    try {
+      const result = await this.redisService.get(key)
+      return result
+    } finally {
       await this.redisService.del(key)
     }
-    return result
   }
 
   // Oauth2
@@ -53,7 +54,7 @@ export class XService {
       code_challenge_method: 'S256',
       code_challenge: codeChallenge
     })
-    const authUrl = baseUrl + `&` + PKCEParams.toString()
+    const authUrl = `${baseUrl}&${PKCEParams.toString()}&platform=x`
     return {
       state,
       codeVerifier,
@@ -123,7 +124,9 @@ export class XService {
   }) {
     const accessToken = access_token ?? (await this.getAndVerifyXTokensByUser(userId)).access_token
     const client = new Client({ accessToken })
-    const response = await client.users.getMe()
+    const response = await client.users.getMe({
+      userfields: ['username', 'profile_image_url', 'name', 'id']
+    })
     const res = await XSql.insertOrUpdateXAccount({ userId, account: response.data })
     return res
   }
@@ -147,19 +150,19 @@ export class XService {
     return response.data as any
   }
 
-  async createPost({
-    text,
-    userId,
-    mediaIds = []
-  }: {
-    text: string
-    userId: string
-    mediaIds?: string[]
-  }) {
-    const client = await this.getUserClient(userId)
-    const params = { text, media: { media_ids: mediaIds } }
-    const response = await client.posts.create(params)
-    return response.data
+  async createPost({ accessToken, text, mediaIds = [] }) {
+    const url = `https://api.x.com/2/tweets`
+    const options = {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        media: { media_ids: mediaIds }
+      })
+    }
+    const res = await fetch(url, options)
+    const data = await res.json()
+    return data
   }
 
   async uploadInit({ media_type, media_category, total_bytes, accessToken }) {
@@ -175,14 +178,15 @@ export class XService {
     }
     const res = await fetch(url, options)
     const data = await res.json()
-    return data
+    return data as { data: { id: string } }
   }
 
-  async uploadAppend({ id, media, accessToken }) {
-    const url = `https://api.x.com/2/media/upload/${id}/append`
+  async uploadAppend({ mediaId, media, segmentIndex, accessToken }) {
+    const url = `https://api.x.com/2/media/upload/${mediaId}/append`
     const form = new FormData()
-    form.append('media', media)
-    form.append('segment_index', '0')
+    const blob = new Blob([media], { type: 'application/octet-stream' })
+    form.append('media', blob, `segment-${segmentIndex}.bin`)
+    form.append('segment_index', segmentIndex.toString())
     const options = {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -193,8 +197,8 @@ export class XService {
     return data
   }
 
-  async uploadFinalize({ id, accessToken }) {
-    const url = `https://api.x.com/2/media/upload/${id}/finalize`
+  async uploadFinalize({ mediaId, accessToken }) {
+    const url = `https://api.x.com/2/media/upload/${mediaId}/finalize`
     const options = {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -205,52 +209,89 @@ export class XService {
     return data
   }
 
-  async getMediaIdFromS3Key({ key, type, client }: { key: string; type: string; client: Client }) {
-    const s3Object = await this.s3Service.get(key)
-    const arrayBuffer = await s3Object.Body.transformToByteArray()
-    const fileBuffer = Buffer.from(arrayBuffer)
-    const uint8Array = new Uint8Array(fileBuffer)
-    const blob = new Blob([uint8Array], { type })
-
-    const res = await this.uploadInit({
-      media_category: 'tweet_image',
-      media_type: type,
-      total_bytes: blob.size,
-      accessToken: client.accessToken
+  async uploadFromS3ToTwitter({ key, accessToken }) {
+    // init
+    const head = await this.s3Service.getHead(key)
+    const totalBytes = head.ContentLength
+    const mediaType = head.ContentType
+    const isVideo = mediaType?.startsWith('video/')
+    const isImage = mediaType?.startsWith('image/')
+    if (!isVideo && !isImage) {
+      throw new Error('Unsupported media type. Only images and videos are supported.')
+    }
+    const initRes = await this.uploadInit({
+      media_category: isVideo ? 'tweet_video' : 'tweet_image',
+      media_type: mediaType,
+      total_bytes: totalBytes,
+      accessToken
     })
-    const { id } = res.data ?? {}
-    const appendRes = await this.uploadAppend({
-      id,
-      media: blob,
-      accessToken: client.accessToken
-    })
+    const mediaId = initRes.data.id
 
-    const finalizeRes = await this.uploadFinalize({ id, accessToken: client.accessToken })
-    return finalizeRes.data.id as string
+    // append
+    const CHUNK_SIZE = 2 * 1024 * 1024
+    const res = await this.s3Service.get(key)
+    const body = res.Body
+    let buffer = Buffer.alloc(0)
+    let segmentIndex = 0
+
+    for await (const chunk of body as any) {
+      buffer = Buffer.concat([buffer, Buffer.from(chunk)])
+      while (buffer.length >= CHUNK_SIZE) {
+        const part = buffer.subarray(0, CHUNK_SIZE)
+        await this.uploadAppend({
+          mediaId,
+          segmentIndex,
+          media: part,
+          accessToken
+        })
+        segmentIndex++
+        buffer = buffer.subarray(CHUNK_SIZE)
+      }
+    }
+    if (buffer.length > 0) {
+      await this.uploadAppend({
+        mediaId,
+        segmentIndex,
+        media: buffer,
+        accessToken
+      })
+    }
+
+    // finalize
+    await this.uploadFinalize({ mediaId, accessToken })
+    return mediaId
   }
 
   async postToTweet({ postId, userId }: { postId: string; userId: string }) {
     const post = await getPostById(postId)
+    const videoKeys = (post.media as { url: string; type: string }[])
+      .filter(item => item.type === 'video')
+      .map(item => item.url)
     const imageKeys = (post.media as { url: string; type: string }[])
       .filter(item => item.type === 'image')
       .map(item => item.url)
       .slice(0, 4)
     const client = await this.getUserClient(userId)
+    const mediaList = videoKeys.length > 0 ? videoKeys : imageKeys
+
     const mediaIds = await Promise.all(
-      imageKeys.map(url =>
-        this.getMediaIdFromS3Key({
-          key: url,
-          type: 'image/jpeg',
-          client
+      mediaList.map(key =>
+        this.uploadFromS3ToTwitter({
+          key,
+          accessToken: client.accessToken
         })
       )
     )
+    await sleep(5_000) // wait for twitter media processing
+
+    const content = post.content.slice(0, 140)
     const tweet = await this.createPost({
-      // 280 limit
-      text: post.content.slice(0, 140),
-      userId,
-      mediaIds
+      text: content,
+      mediaIds,
+      accessToken: client.accessToken
     })
     return tweet
   }
 }
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
