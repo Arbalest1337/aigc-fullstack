@@ -3,11 +3,11 @@ import { StripeService } from '../stripe/stripe.service'
 import * as SubscriptionSql from './subscription.sql'
 import { getCurrentDbTime } from 'src/db'
 @Injectable()
-export class SubscriptionService {
+export class SubscriptionService implements OnModuleInit {
   constructor(private readonly stripeService: StripeService) {}
 
-  async OnModuleInit() {
-    this.insertInitialPlans()
+  async onModuleInit() {
+    await this.insertInitialPlans()
   }
 
   async querySubscriptionPlans() {
