@@ -38,6 +38,8 @@ export class RateLimitGuard extends ThrottlerGuard {
     const ttl = ttlSec * 1000
     const req = context.switchToHttp().getRequest()
     const tracker = await getTracker(req, context)
+    console.log('### tracker ###')
+    console.log(tracker)
     const redisKey = generateKey(context, tracker, throttler.name)
     const res = await this.storageService.increment(redisKey, ttl, limit, ttl, throttler.name)
     const totalHits = res.totalHits ?? undefined

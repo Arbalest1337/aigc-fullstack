@@ -50,13 +50,6 @@ export class XController {
     return res
   }
 
-  @Post('create-post')
-  async createPost(@CurrentUser('id') userId, @Body() body) {
-    const { text } = body
-    const res = await this.XService.createPost({ userId, text })
-    return res
-  }
-
   @Post('post-to-tweet')
   async postToTweet(@CurrentUser('id') userId, @Body() body) {
     const { postId } = body
