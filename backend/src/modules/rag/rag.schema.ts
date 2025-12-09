@@ -8,4 +8,4 @@ export type InsertKnowledgeBaseDto = z.infer<typeof insertKnowledgeBaseSchema>
 export const insertKnowledgeBaseDocumentSchema = z.object({
   name: z.string()
 })
-export type InsertKnowledgeBaseDto = z.infer<typeof insertKnowledgeBaseSchema>
+export type InsertKnowledgeBaseDocumentDto = z.infer<typeof insertKnowledgeBaseSchema>

@@ -9,13 +9,17 @@ const client = new GoogleGenAI({
 export const getEmbeddings = async (texts: string[]) => {
   const resp = await client.models.embedContent({
     model: 'gemini-embedding-001',
-    contents: texts
+    contents: texts,
+    config: {
+      outputDimensionality: 1536
+    }
   })
-  return resp.embeddings.map(item => item.values)
+  const res = resp.embeddings.map(item => item.values)
+  return res
 }
 
-export const chat = async ({ input, systemInstruction }) => {
-  const response = await ai.models.generateContent({
+export const generateResponse = async ({ input, systemInstruction }) => {
+  const response = await client.models.generateContentStream({
     model: 'gemini-2.5-flash',
     contents: [
       {
@@ -26,9 +30,10 @@ export const chat = async ({ input, systemInstruction }) => {
     config: {
       systemInstruction,
       temperature: 0.7,
-      maxOutputTokens: 200
+      maxOutputTokens: 2000
     }
   })
-
-  return response.text()
+  return response
 }
+
+

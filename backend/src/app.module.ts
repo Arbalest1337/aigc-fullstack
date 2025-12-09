@@ -23,6 +23,7 @@ import { RedisModule } from './modules/redis/redis.module'
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { RateLimitGuard } from './modules/rate-limit/rate-limit.guard'
+import { RagModule } from './modules/rag/rag.module'
 @Module({
   imports: [
     BullModule.forRoot({
@@ -55,7 +56,8 @@ import { RateLimitGuard } from './modules/rate-limit/rate-limit.guard'
     SubscriptionModule,
     RedemptionCodeModule,
     XModule,
-    RateLimitModule
+    RateLimitModule,
+    RagModule
   ],
   controllers: [AppController],
   providers: [

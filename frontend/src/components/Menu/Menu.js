@@ -37,6 +37,10 @@ export default function Home() {
     {
       name: 'Rate Limit',
       path: '/rate-limit'
+    },
+     {
+      name: 'RAG',
+      path: '/rag'
     }
   ]
 

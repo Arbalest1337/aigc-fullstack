@@ -17,17 +17,26 @@ export default function useRequest() {
         ...headers
       }
     })
-    const result = await res.json()
 
     if (!res.ok) {
-      alert(result.message)
+      const errText = await res.text().catch(() => res.statusText || 'request error')
+      alert(errText)
       if ([401].includes(res.status)) {
         clearJwt()
         router.push('/sign-in')
       }
-      throw new Error(result.message)
+      throw new Error(errText)
     }
-    return result.data
+
+    const contentType = (res.headers.get('content-type') || '').toLowerCase()
+    // json
+    const isJson = contentType.includes('application/json')
+    if (isJson) {
+      const result = await res.json()
+      return result.data
+    }
+    // other
+    return res
   }
 
   return request
