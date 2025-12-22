@@ -9,8 +9,8 @@ export const OauthTokensTable = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     userId: ulid().references(() => UserTable.id, { onDelete: 'cascade' }),
-    type: text().notNull(),
+    platform: text().notNull(),
     tokens: jsonb().notNull()
   },
-  t => [unique().on(t.userId, t.type)]
+  t => [unique().on(t.userId, t.platform)]
 )

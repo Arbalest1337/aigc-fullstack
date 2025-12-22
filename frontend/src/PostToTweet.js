@@ -13,7 +13,7 @@ export default function PostToTweet() {
     try {
       setLoading(true)
       const res = await request({
-        url: '/x/post-to-tweet',
+        url: '/oauth/x/post-to-tweet',
         method: 'POST',
         data: {
           postId

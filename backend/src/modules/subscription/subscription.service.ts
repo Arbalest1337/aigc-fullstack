@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common'
 import { StripeService } from '../stripe/stripe.service'
 import * as SubscriptionSql from './subscription.sql'
-import { getCurrentDbTime } from 'src/db'
+import { getDBCurrentTime } from 'src/db'
 @Injectable()
 export class SubscriptionService implements OnModuleInit {
   constructor(private readonly stripeService: StripeService) {}
@@ -91,7 +91,7 @@ export class SubscriptionService implements OnModuleInit {
   }
 
   async handleSubscriptionSucceeded({ userId, duration }: { userId: string; duration: number }) {
-    const dbNow = new Date(await getCurrentDbTime()).getTime()
+    const dbNow = new Date(await getDBCurrentTime()).getTime()
     const existSubscription = await SubscriptionSql.getSubscriptionByUserId(userId)
     if (existSubscription) {
       // update

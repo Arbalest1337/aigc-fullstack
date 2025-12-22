@@ -10,12 +10,22 @@ export default function Post({ post }) {
       <div className="flex gap-4">
         <div className="flex flex-col gap-2 w-[240px] shrink-0 ">
           {post.media?.map(m => (
-            <img
-              className="block"
-              key={m.url}
-              src={process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL + m.url}
-              alt=""
-            />
+            <div key={m.url}>
+              {m.type === 'image' && (
+                <img
+                  className="block"
+                  src={process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL + m.url}
+                  alt=""
+                />
+              )}
+              {m.type === 'video' && (
+                <video
+                  className="block"
+                  controls
+                  src={process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL + m.url}
+                />
+              )}
+            </div>
           ))}
 
           <div className="text-[14px]">

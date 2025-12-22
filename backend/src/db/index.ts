@@ -7,7 +7,7 @@ export const db = drizzle({
   casing: 'snake_case'
 })
 
-export const getCurrentDbTime = async () => {
-  const result = await db.execute(sql`SELECT NOW() as "dbNow"`)
-  return result?.rows?.[0]?.dbNow as string
+export const getDBCurrentTime = async () => {
+  const result = await db.execute(sql`SELECT NOW()`)
+  return result.rows[0].now as string
 }

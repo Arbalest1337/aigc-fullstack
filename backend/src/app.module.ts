@@ -18,12 +18,12 @@ import { SongModule } from './modules/song/song.module'
 import { StripeModule } from './modules/stripe/stripe.module'
 import { SubscriptionModule } from './modules/subscription/subscription.module'
 import { RedemptionCodeModule } from './modules/redemption-code/redemption-code.module'
-import { XModule } from './modules/x/x.module'
 import { RedisModule } from './modules/redis/redis.module'
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { RateLimitGuard } from './modules/rate-limit/rate-limit.guard'
 import { RagModule } from './modules/rag/rag.module'
+import { OAuthModule } from './modules/oauth/oauth.module'
 @Module({
   imports: [
     BullModule.forRoot({
@@ -55,9 +55,9 @@ import { RagModule } from './modules/rag/rag.module'
     StripeModule,
     SubscriptionModule,
     RedemptionCodeModule,
-    XModule,
     RateLimitModule,
-    RagModule
+    RagModule,
+    OAuthModule,
   ],
   controllers: [AppController],
   providers: [

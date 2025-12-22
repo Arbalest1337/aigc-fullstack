@@ -2,7 +2,13 @@ import { z } from 'zod'
 
 export const createPostSchema = z
   .object({
-    content: z.string()
+    content: z.string(),
+    media: z.array(
+      z.object({
+        type: z.string(),
+        url: z.string()
+      })
+    )
   })
   .required()
 
