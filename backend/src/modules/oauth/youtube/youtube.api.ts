@@ -1,3 +1,15 @@
+const client_id = process.env.OAUTH_YOUTUBE_CLIENT_ID
+const client_secret = process.env.OAUTH_YOUTUBE_CLIENT_SECRET
+const redirect_uri = process.env.OAUTH_REDIRECT_URI
+const scope =
+  'https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.upload'
+
+interface Token {
+  access_token: string
+  refresh_token: string
+  expires_in: number
+}
+
 export const generateAuthUrl = ({
   state,
   codeChallenge
@@ -6,18 +18,17 @@ export const generateAuthUrl = ({
   codeChallenge: string
 }) => {
   const url = `https://accounts.google.com/o/oauth2/v2/auth`
-
   const params = new URLSearchParams({
-    client_id: process.env.OAUTH_YOUTUBE_CLIENT_ID,
-    redirect_uri: process.env.OAUTH_REDIRECT_URI,
+    client_id,
+    redirect_uri,
+    scope,
     response_type: 'code',
     access_type: 'offline',
+    prompt: 'consent',
     state,
     code_challenge: codeChallenge,
-    code_challenge_method: 'S256',
-    scope: `https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.upload`
+    code_challenge_method: 'S256'
   })
-
   return `${url}?${params.toString()}`
 }
 
@@ -31,9 +42,9 @@ export const codeToToken = async ({
   const url = `https://oauth2.googleapis.com/token`
   const headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
   const params = new URLSearchParams({
-    client_id: process.env.OAUTH_YOUTUBE_CLIENT_ID,
-    client_secret: process.env.OAUTH_YOUTUBE_CLIENT_SECRET,
-    redirect_uri: process.env.OAUTH_REDIRECT_URI,
+    client_id,
+    client_secret,
+    redirect_uri,
     grant_type: 'authorization_code',
     code_verifier: codeVerifier,
     code
@@ -42,27 +53,29 @@ export const codeToToken = async ({
   if (!res.ok) {
     throw new Error(`Youtube code to token error ${res.status}: ${res.statusText}`)
   }
-  return await res.json()
+  const data = (await res.json()) as Token
+  return data
 }
 
 export const refreshToken = async (refresh_token: string) => {
   const url = `https://oauth2.googleapis.com/token`
+  const headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
   const params = new URLSearchParams({
-    client_id: process.env.OAUTH_YOUTUBE_CLIENT_ID,
-    client_secret: process.env.OAUTH_YOUTUBE_CLIENT_SECRET,
+    client_id,
+    client_secret,
     grant_type: 'refresh_token',
     refresh_token
   })
-  const res = await fetch(`${url}?${params.toString()}`, { method: 'POST' })
+  const res = await fetch(url, { method: 'POST', body: params.toString(), headers })
   if (!res.ok) {
     throw new Error(`Youtube refresh token error ${res.status}: ${res.statusText}`)
   }
   const data = await res.json()
-  return data
+  return { refresh_token, ...data }
 }
 
 export const getAccountInfo = async (access_token: string) => {
-  const url = `https://www.googleapis.com/youtube/v3/channels?mine=true`
+  const url = `https://www.googleapis.com/youtube/v3/channels?mine=true&part=snippet`
   const headers = {
     Authorization: `Bearer ${access_token}`
   }
@@ -71,7 +84,7 @@ export const getAccountInfo = async (access_token: string) => {
   if (!res.ok) {
     throw new Error(`Youtube get channel info error ${res.status}: ${res.statusText}`)
   }
-  const data = await res.json()
+  const data = (await res.json()) as Token
 
   return data
 }
@@ -99,14 +112,17 @@ export const initUploadUrl = async ({ title, ContentType, access_token, ContentL
     }
   }
 
-  const initRes = await fetch(`${url}?${params.toString()}`, {
+  const res = await fetch(`${url}?${params.toString()}`, {
     method: 'POST',
     headers,
     body: JSON.stringify(data)
   })
-  if (!initRes.ok) {
-    throw new Error(`Youtube upload url init error ${initRes.status} ${initRes.statusText}`)
+  if (!res.ok) {
+    throw new Error(`Youtube upload url init error ${res.status} ${res.statusText}`)
   }
-  const uploadUrl = initRes.headers.get('location')
+  const uploadUrl = res.headers.get('location')
+  if (!uploadUrl) {
+    throw new Error(`Can not get youtube upload url`)
+  }
   return uploadUrl
 }

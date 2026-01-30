@@ -6,7 +6,7 @@ import { WanTaskStatus, queryWanTask } from 'src/apis/wan.api'
 import { VideoService } from './video.service'
 import { QUEUE_TASK } from 'src/utils/queue'
 
-@Processor(QUEUE_TASK.VIDEO, { concurrency: 5 })
+@Processor(QUEUE_TASK.VIDEO, { concurrency: 10, autorun: false, drainDelay: 15 })
 @Injectable()
 export class VideoProcessor extends WorkerHost {
   constructor(private readonly videoService: VideoService) {

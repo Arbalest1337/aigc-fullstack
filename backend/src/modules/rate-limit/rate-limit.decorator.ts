@@ -1,6 +1,8 @@
 import { RateLimitKeys } from 'src/db/schema/rate-limit'
-import { SetMetadata } from '@nestjs/common'
+import { RateLimitGuard } from './rate-limit.guard'
+import { applyDecorators, UseGuards, SetMetadata } from '@nestjs/common'
+import {RATE_LIMIT_KEY} from './rate-limit.constant'
 
-export const RATE_LIMIT_KEY = 'rate_limit_key'
-
-export const RateLimitThrottle = (key: RateLimitKeys) => SetMetadata(RATE_LIMIT_KEY, key)
+export const RateLimitThrottle = (key: RateLimitKeys) => {
+  return applyDecorators(SetMetadata(RATE_LIMIT_KEY, key), UseGuards(RateLimitGuard))
+}

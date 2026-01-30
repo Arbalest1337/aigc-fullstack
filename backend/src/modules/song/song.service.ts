@@ -1,14 +1,10 @@
 import { Injectable } from '@nestjs/common'
 import { S3Service } from '../s3/s3.service'
-import { SongProducer } from './song.producer'
 import { generateMurekaSong } from 'src/apis/mureka.api'
 import * as SongSql from './song.sql'
 @Injectable()
 export class SongService {
-  constructor(
-    private readonly s3Service: S3Service,
-    private readonly songProducer: SongProducer
-  ) {}
+  constructor(private readonly s3Service: S3Service) {}
 
   async generateSong(params) {
     const { prompt = '', lyrics = '', creatorId } = params
@@ -21,7 +17,6 @@ export class SongService {
       creatorId,
       taskId
     })
-    await this.songProducer.addToQueue(taskId)
     return result
   }
 

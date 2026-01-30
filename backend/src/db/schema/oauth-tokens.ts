@@ -2,7 +2,7 @@ import { pgTable, text, jsonb, unique, timestamp } from 'drizzle-orm/pg-core'
 import { primaryId, createdAt, updatedAt, ulid } from '../custom'
 import { UserTable } from './user'
 
-export const OauthTokensTable = pgTable(
+export const OAuthTokensTable = pgTable(
   'oauth_tokens',
   {
     id: primaryId(),

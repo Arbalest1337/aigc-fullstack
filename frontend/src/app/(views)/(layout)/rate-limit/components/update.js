@@ -7,8 +7,8 @@ import useRequest from '@/hooks/useRequest'
 export default function UpdateRateLimit() {
   const request = useRequest()
   const [loading, setLoading] = useState(false)
-  const [limit, setLimit] = useState(null)
-  const [ttlSec, setTtlSec] = useState(null)
+  const [limit, setLimit] = useState()
+  const [ttlSec, setTtlSec] = useState()
   const [key, setKey] = useState('')
   const disabled = loading || !limit || !ttlSec || !key
 

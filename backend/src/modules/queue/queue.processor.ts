@@ -16,7 +16,7 @@ interface TestJobResult {
 }
 
 @Injectable()
-@Processor('testQueue')
+@Processor('testQueue', { concurrency: 10, autorun: false, drainDelay: 15 })
 export class QueueProcessor extends WorkerHost {
   async process(job: Job<TestJobData, TestJobResult, string>) {
     // process
@@ -66,7 +66,7 @@ export class QueueProcessor extends WorkerHost {
     // 可选：对于无法恢复的连接错误，强制 Worker 进程退出，依靠外部系统重启。
     // process.exit(1);
   }
-  
+
   //   @OnWorkerEvent('lockRenewalFailed')
   //   onLockRenewalFailed(jobIds: string[]) {
   //     console.error(`🔒 锁续约失败，受影响 jobIds: ${jobIds.join(', ')}`)

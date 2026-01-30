@@ -6,6 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "qstash": "npx @upstash/qstash-cli dev",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -29,8 +30,9 @@
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/schedule": "^6.0.0",
-    "@nestjs/swagger": "^11.2.3",
+    "@nestjs/swagger": "^7.4.2",
     "@nestjs/throttler": "^6.4.0",
+    "@upstash/qstash": "^2.8.4",
     "@xdevplatform/xdk": "^0.1.0",
     "bullmq": "^5.56.9",
     "dotenv": "^17.2.1",

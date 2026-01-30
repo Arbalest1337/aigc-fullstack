@@ -21,9 +21,13 @@ import { RedemptionCodeModule } from './modules/redemption-code/redemption-code.
 import { RedisModule } from './modules/redis/redis.module'
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module'
 import { ThrottlerModule } from '@nestjs/throttler'
-import { RateLimitGuard } from './modules/rate-limit/rate-limit.guard'
 import { RagModule } from './modules/rag/rag.module'
 import { OAuthModule } from './modules/oauth/oauth.module'
+
+// proxy
+import { ProxyAgent, setGlobalDispatcher } from 'undici'
+setGlobalDispatcher(new ProxyAgent(process.env.HTTP_PROXY))
+
 @Module({
   imports: [
     BullModule.forRoot({
@@ -57,17 +61,13 @@ import { OAuthModule } from './modules/oauth/oauth.module'
     RedemptionCodeModule,
     RateLimitModule,
     RagModule,
-    OAuthModule,
+    OAuthModule
   ],
   controllers: [AppController],
   providers: [
     {
       provide: APP_FILTER,
       useClass: AllExceptionFilter
-    },
-    {
-      provide: APP_GUARD,
-      useClass: RateLimitGuard
     },
     AppService
   ]

@@ -2,10 +2,9 @@
 import useRequest from '@/hooks/useRequest'
 import { useEffect, useState } from 'react'
 
-export default function RateLimits() {
+export default function RateLimits({ limits, setLimits }) {
   const request = useRequest()
   const [loading, setLoading] = useState(false)
-  const [limits, setLimits] = useState([])
 
   useEffect(() => {
     getRateLimits()
@@ -38,7 +37,7 @@ export default function RateLimits() {
         <div key={item.id} className="flex my-2 gap-2 items-center">
           <h1>{item.key}</h1>
           <div>
-            <b className="text-xl">{item.limit}</b> times / <b className="text-xl">{item.ttlSec}</b> s
+            <b className="text-xl">{item.limit}</b> times / <b className="text-xl">{item.ttlSec}</b>{' '}
           </div>
           <div></div>
         </div>

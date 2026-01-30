@@ -7,10 +7,12 @@ import { S3Module } from '../s3/s3.module'
 import { SongProducer } from './song.producer'
 import { QUEUE_TASK } from 'src/utils/queue'
 import { SubscriptionModule } from '../subscription/subscription.module'
+import { SongQStash } from './song.qstash'
+import { QStashModule } from '../upstash/qstash/qstash.module'
 
 @Module({
-  imports: [BullModule.registerQueue({ name: QUEUE_TASK.SONG }), S3Module, SubscriptionModule],
+  imports: [S3Module, SubscriptionModule, QStashModule],
   controllers: [SongController],
-  providers: [SongService, SongProducer, SongProcessor]
+  providers: [SongService, SongQStash]
 })
 export class SongModule {}

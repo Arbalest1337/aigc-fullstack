@@ -69,6 +69,9 @@ export const WanImage2Video = async ({ prompt, imgUrl: img_url }) => {
 }
 
 export const queryWanTask = async (taskId: string) => {
+  if (!taskId) {
+    throw new Error(`Can not get taskId ${taskId}`)
+  }
   const url = `${BASE_URL}/api/v1/tasks/${taskId}`
   const res = await fetch(url, { method: 'GET', headers })
   const data = await res.json()

@@ -6,7 +6,7 @@ import { queryMurekaTask, MurekaTaskStatus } from 'src/apis/mureka.api'
 import { SongService } from './song.service'
 import { QUEUE_TASK } from 'src/utils/queue'
 
-@Processor(QUEUE_TASK.SONG, { concurrency: 5 })
+@Processor(QUEUE_TASK.SONG, { concurrency: 10, autorun: false, drainDelay: 15 })
 @Injectable()
 export class SongProcessor extends WorkerHost {
   constructor(private readonly songService: SongService) {

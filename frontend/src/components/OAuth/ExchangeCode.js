@@ -27,6 +27,7 @@ export default function ExchangeCode({ platform }) {
         state
       }
     })
+    alert(`${platform} Authorized successfully`)
     router.replace('/oauth')
   }
 

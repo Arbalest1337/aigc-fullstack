@@ -8,7 +8,7 @@ import { generatePost } from 'src/apis/openai/openai.api'
 import { S3Service } from '../s3/s3.service'
 import { QUEUE_TASK } from 'src/utils/queue'
 
-@Processor(QUEUE_TASK.POST_SCHEDULE, { concurrency: 10 })
+@Processor(QUEUE_TASK.POST_SCHEDULE, { concurrency: 10, autorun: false, drainDelay: 15 })
 @Injectable()
 export class PostScheduleProcessor extends WorkerHost {
   constructor(

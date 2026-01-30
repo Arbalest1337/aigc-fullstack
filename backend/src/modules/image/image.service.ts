@@ -2,21 +2,24 @@ import { Injectable } from '@nestjs/common'
 import { WanText2Image } from 'src/apis/wan.api'
 import * as ImageSql from './image.sql'
 import { S3Service } from '../s3/s3.service'
-import { ImageProducer } from './image.producer'
+import { ImageQStash } from './image.qstash'
 
 @Injectable()
 export class ImageService {
   constructor(
     private readonly s3Service: S3Service,
-    private readonly imageProducer: ImageProducer
+    private readonly imageQStash: ImageQStash
   ) {}
 
   async textToImage(params) {
     const { prompt, creatorId } = params
     const res = await WanText2Image(prompt)
     const result = await ImageSql.createImage({ prompt, detail: res, creatorId })
-    await this.imageProducer.addToQueue(res.output.task_id)
+    await this.imageQStash.publish(result.taskId)
     return result
+
+    // await this.imageQStash.publish(crypto.randomUUID())
+    // return prompt
   }
 
   async getImageByTaskId(taskId) {

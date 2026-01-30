@@ -2,7 +2,7 @@ import { pgTable, text, jsonb, unique } from 'drizzle-orm/pg-core'
 import { primaryId, createdAt, updatedAt, ulid } from '../custom'
 import { UserTable } from './user'
 
-export const OauthAccountsTable = pgTable(
+export const OAuthAccountsTable = pgTable(
   'oauth_accounts',
   {
     id: primaryId(),

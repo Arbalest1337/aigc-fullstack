@@ -6,7 +6,7 @@ import { WanTaskStatus, queryWanTask } from 'src/apis/wan.api'
 import { ImageService } from 'src/modules/image/image.service'
 import { QUEUE_TASK } from 'src/utils/queue'
 
-@Processor(QUEUE_TASK.IMAGE, { concurrency: 5 })
+@Processor(QUEUE_TASK.IMAGE, { concurrency: 10, autorun: false, drainDelay: 15 })
 @Injectable()
 export class ImageProcessor extends WorkerHost {
   constructor(private readonly imageService: ImageService) {

@@ -1,36 +1,33 @@
 import { Injectable } from '@nestjs/common'
-import { Client, OAuth2 } from '@xdevplatform/xdk'
 import { OAuthCommonService } from '../oauth-common/oauth-common.service'
 import { S3Service } from '../../s3/s3.service'
-import { insertOrUpdateToken, insertOrUpdateAccount } from '../oauth.sql'
-import { uploadInit, uploadAppend, uploadFinalize, createPost, refreshToken } from './x.api'
+import { insertOrUpdateToken, insertOrUpdateAccount, OAuth2Token } from '../oauth.sql'
+import {
+  uploadInit,
+  uploadAppend,
+  uploadFinalize,
+  createPost,
+  refreshToken,
+  generateAuthUrl,
+  getAccountInfo,
+  codeToToken
+} from './x.api'
 
 const platform = 'x'
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-uploadInit
+
 @Injectable()
 export class XService {
-  private readonly oauth2
   constructor(
     private readonly s3Service: S3Service,
     private readonly oauthCommonService: OAuthCommonService
-  ) {
-    this.oauth2 = new OAuth2({
-      clientId: process.env.OAUTH_X_CLIENT_ID,
-      clientSecret: process.env.OAUTH_X_CLIENT_SECRET,
-      redirectUri: process.env.OAUTH_REDIRECT_URI,
-      scope: ['tweet.read', 'tweet.write', 'media.write', 'users.read', 'offline.access']
-    })
-  }
+  ) {}
 
   async getAuthorizationUrl() {
     const { state, codeChallenge } = await this.oauthCommonService.generateAndStorePKCE(platform)
-    const baseUrl = await this.oauth2.getAuthorizationUrl(state)
-    const authUrl = new URL(baseUrl)
-    authUrl.searchParams.set('code_challenge_method', 'S256')
-    authUrl.searchParams.set('code_challenge', codeChallenge)
-    return authUrl.toString()
+    const authUrl = await generateAuthUrl({ state, codeChallenge })
+    return authUrl
   }
 
   async exchangeCode({ code, state, userId }: { code: string; state: string; userId: string }) {
@@ -38,8 +35,8 @@ export class XService {
     if (!codeVerifier) {
       throw new Error('Authorization link expired or already used. Please try again.')
     }
-    const tokens = await this.oauth2.exchangeCode(code, codeVerifier)
-    const account = await this.getAccountInfo(tokens.access_token)
+    const tokens = await codeToToken({ code, codeVerifier })
+    const account = await getAccountInfo(tokens.access_token)
     await insertOrUpdateToken({ userId, tokens, platform })
     const res = await insertOrUpdateAccount({ userId, account, platform })
     return res
@@ -47,21 +44,13 @@ export class XService {
 
   async getAndRefreshToken(userId: string) {
     const { tokens, isExpired } = await this.oauthCommonService.checkToken({ userId, platform })
-    if (isExpired) {
-      const newTokens = await refreshToken(tokens.refresh_token)
-      await insertOrUpdateToken({ userId, tokens: newTokens, platform })
-      return newTokens
-    }
-    return tokens
+    if (!isExpired) return tokens
+    const newTokens = await refreshToken(tokens.refresh_token)
+    await insertOrUpdateToken({ userId, tokens: newTokens, platform })
+    return newTokens as OAuth2Token
   }
 
-  async getAccountInfo(accessToken: string) {
-    const client = new Client({ accessToken })
-    const res = await client.users.getMe()
-    return res.data as { id: string; name: string; username: string }
-  }
-
-  async uploadFromS3ToTwitter({ key, accessToken }) {
+  async uploadFromS3ToTwitter({ key, access_token }: { key: string; access_token: string }) {
     // init
     const head = await this.s3Service.getHead(key)
     const totalBytes = head.ContentLength
@@ -71,13 +60,12 @@ export class XService {
     if (!isVideo && !isImage) {
       throw new Error('Unsupported media type. Only images and videos are supported.')
     }
-    const initRes = await uploadInit({
+    const mediaId = await uploadInit({
       media_category: isVideo ? 'tweet_video' : 'tweet_image',
       media_type: mediaType,
       total_bytes: totalBytes,
-      accessToken
+      access_token
     })
-    const mediaId = initRes.data.id
 
     // append
     const CHUNK_SIZE = 2 * 1024 * 1024
@@ -94,7 +82,7 @@ export class XService {
           mediaId,
           segmentIndex,
           media: part,
-          accessToken
+          access_token
         })
         segmentIndex++
         buffer = buffer.subarray(CHUNK_SIZE)
@@ -105,24 +93,24 @@ export class XService {
         mediaId,
         segmentIndex,
         media: buffer,
-        accessToken
+        access_token
       })
     }
 
     // finalize
-    await uploadFinalize({ mediaId, accessToken })
+    await uploadFinalize({ mediaId, access_token })
     return mediaId
   }
 
   async publish({ postId, userId }: { postId: string; userId: string }) {
-    const { access_token: accessToken } = await this.getAndRefreshToken(userId)
+    const { access_token } = await this.getAndRefreshToken(userId)
     const { content, images, videos } = await this.oauthCommonService.getPostData(postId)
-    const mediaList = videos.length > 0 ? [videos[0]] : images.slice(0, 4).map(item => item.key)
+    const mediaList = (videos.length > 0 ? [videos[0]] : images.slice(0, 4)).map(item => item.key)
     const mediaIds = await Promise.all(
       mediaList.map(key =>
         this.uploadFromS3ToTwitter({
           key,
-          accessToken: accessToken
+          access_token
         })
       )
     )
@@ -134,7 +122,7 @@ export class XService {
     const tweet = await createPost({
       text: content,
       mediaIds,
-      accessToken
+      access_token
     })
     return tweet
   }

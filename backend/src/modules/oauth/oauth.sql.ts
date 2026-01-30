@@ -1,8 +1,8 @@
 import { db } from 'src/db'
 import { eq, and, sql } from 'drizzle-orm'
-import { OauthTokensTable } from 'src/db/schema/oauth-tokens'
+import { OAuthTokensTable } from 'src/db/schema/oauth-tokens'
 import { encrypt, decrypt } from './token-crypto'
-import { OauthAccountsTable } from 'src/db/schema/oauth-accounts'
+import { OAuthAccountsTable } from 'src/db/schema/oauth-accounts'
 
 export interface OAuth2Token {
   access_token: string
@@ -14,10 +14,10 @@ export const insertOrUpdateToken = async ({ userId, tokens, platform }) => {
   const encryptedTokens = encrypt(tokens)
   const params = { userId, tokens: encryptedTokens, platform }
   const [res] = await db
-    .insert(OauthTokensTable)
+    .insert(OAuthTokensTable)
     .values(params)
     .onConflictDoUpdate({
-      target: [OauthTokensTable.userId, OauthTokensTable.platform],
+      target: [OAuthTokensTable.userId, OAuthTokensTable.platform],
       set: { tokens: encryptedTokens }
     })
     .returning()
@@ -27,8 +27,8 @@ export const insertOrUpdateToken = async ({ userId, tokens, platform }) => {
 export const getTokenByUserId = async (userId: string, platform: string) => {
   const [res] = await db
     .select()
-    .from(OauthTokensTable)
-    .where(and(eq(OauthTokensTable.userId, userId), eq(OauthTokensTable.platform, platform)))
+    .from(OAuthTokensTable)
+    .where(and(eq(OAuthTokensTable.userId, userId), eq(OAuthTokensTable.platform, platform)))
     .limit(1)
 
   if (!res) return undefined
@@ -40,14 +40,14 @@ export const getTokenByUserId = async (userId: string, platform: string) => {
 
 export const insertOrUpdateAccount = async ({ userId, account, platform }) => {
   const [res] = await db
-    .insert(OauthAccountsTable)
+    .insert(OAuthAccountsTable)
     .values({
       userId,
       account,
       platform
     })
     .onConflictDoUpdate({
-      target: [OauthAccountsTable.userId, OauthAccountsTable.platform],
+      target: [OAuthAccountsTable.userId, OAuthAccountsTable.platform],
       set: { account }
     })
     .returning()
@@ -57,8 +57,8 @@ export const insertOrUpdateAccount = async ({ userId, account, platform }) => {
 export const getAccountByUserId = async (userId: string, platform: string) => {
   const [res] = await db
     .select()
-    .from(OauthAccountsTable)
-    .where(and(eq(OauthAccountsTable.userId, userId), eq(OauthAccountsTable.platform, platform)))
+    .from(OAuthAccountsTable)
+    .where(and(eq(OAuthAccountsTable.userId, userId), eq(OAuthAccountsTable.platform, platform)))
     .limit(1)
   return res
 }
@@ -66,11 +66,11 @@ export const getAccountByUserId = async (userId: string, platform: string) => {
 export const getAccounts = async (userId?: string, platform?: string) => {
   const res = await db
     .select()
-    .from(OauthAccountsTable)
+    .from(OAuthAccountsTable)
     .where(
       and(
-        userId ? eq(OauthAccountsTable.userId, userId) : undefined,
-        platform ? eq(OauthAccountsTable.platform, platform) : undefined
+        userId ? eq(OAuthAccountsTable.userId, userId) : undefined,
+        platform ? eq(OAuthAccountsTable.platform, platform) : undefined
       )
     )
   return res

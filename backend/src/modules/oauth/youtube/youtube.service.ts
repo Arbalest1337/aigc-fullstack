@@ -39,12 +39,10 @@ export class YoutubeService {
 
   async getAndRefreshToken(userId: string) {
     const { tokens, isExpired } = await this.oauthCommonService.checkToken({ userId, platform })
-    if (isExpired) {
-      const newTokens = await refreshToken(tokens.refresh_token)
-      await insertOrUpdateToken({ userId, tokens: newTokens, platform })
-      return newTokens
-    }
-    return tokens
+    if (!isExpired) return tokens
+    const newTokens = await refreshToken(tokens.refresh_token)
+    await insertOrUpdateToken({ userId, tokens: newTokens, platform })
+    return newTokens
   }
 
   async publish({ postId, userId }: { postId: string; userId: string }) {

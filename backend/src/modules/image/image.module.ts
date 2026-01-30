@@ -1,16 +1,14 @@
 import { Module } from '@nestjs/common'
 import { ImageController } from './image.controller'
 import { ImageService } from './image.service'
-import { BullModule } from '@nestjs/bullmq'
-import { ImageProducer } from './image.producer'
-import { ImageProcessor } from './image.processor'
 import { S3Module } from '../s3/s3.module'
-import { QUEUE_TASK } from 'src/utils/queue'
 import { SubscriptionModule } from '../subscription/subscription.module'
+import { ImageQStash } from './image.qstash'
+import { QStashModule } from '../upstash/qstash/qstash.module'
 
 @Module({
-  imports: [BullModule.registerQueue({ name: QUEUE_TASK.IMAGE }), S3Module, SubscriptionModule],
+  imports: [S3Module, SubscriptionModule, QStashModule],
   controllers: [ImageController],
-  providers: [ImageService, ImageProducer, ImageProcessor]
+  providers: [ImageService, ImageQStash]
 })
 export class ImageModule {}

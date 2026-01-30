@@ -7,8 +7,8 @@ import {
   ThrottlerLimitDetail
 } from '@nestjs/throttler'
 import { Reflector } from '@nestjs/core'
-import { RATE_LIMIT_KEY } from './rate-limit.decorator'
 import { getRateLimitByKey } from './rate-limit.sql'
+import { RATE_LIMIT_KEY } from './rate-limit.constant'
 
 @Injectable()
 export class RateLimitGuard extends ThrottlerGuard {
@@ -37,9 +37,10 @@ export class RateLimitGuard extends ThrottlerGuard {
 
     const ttl = ttlSec * 1000
     const req = context.switchToHttp().getRequest()
-    const tracker = await getTracker(req, context)
-    console.log('### tracker ###')
-    console.log(tracker)
+    const ip = await getTracker(req, context)
+    const userId = req.user?.id
+    const tracker = `${key}:${userId ?? ip}`
+
     const redisKey = generateKey(context, tracker, throttler.name)
     const res = await this.storageService.increment(redisKey, ttl, limit, ttl, throttler.name)
     const totalHits = res.totalHits ?? undefined

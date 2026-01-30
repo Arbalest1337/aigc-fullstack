@@ -1,7 +1,5 @@
 import { GoogleGenAI } from '@google/genai'
-import { ProxyAgent, setGlobalDispatcher } from 'undici'
 
-setGlobalDispatcher(new ProxyAgent(process.env.HTTP_PROXY))
 const client = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY
 })

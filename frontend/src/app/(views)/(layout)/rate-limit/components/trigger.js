@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import useRequest from '@/hooks/useRequest'
 
-export default function RateLimitTrigger() {
+export default function RateLimitTrigger({ limitKey }) {
   const request = useRequest()
   const [loading, setLoading] = useState(false)
   const [count, setCount] = useState(0)
@@ -11,7 +11,7 @@ export default function RateLimitTrigger() {
     try {
       setLoading(true)
       const res = await request({
-        url: '/rate-limit/trigger',
+        url: `/rate-limit/trigger/${limitKey}`,
         method: 'Post'
       })
       setCount(prev => prev + 1)
@@ -22,7 +22,9 @@ export default function RateLimitTrigger() {
 
   return (
     <div className="p-4">
-      <h1 className="mb-4">{count}</h1>
+      <h1 className="mb-4">
+        {limitKey}:{count}
+      </h1>
       <button
         className="cursor-pointer border px-2 "
         disabled={loading}

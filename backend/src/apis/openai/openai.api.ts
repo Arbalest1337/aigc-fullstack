@@ -1,5 +1,3 @@
-import { ProxyAgent, setGlobalDispatcher } from 'undici'
-setGlobalDispatcher(new ProxyAgent(process.env.HTTP_PROXY))
 import OpenAI from 'openai'
 
 export const openai = new OpenAI()

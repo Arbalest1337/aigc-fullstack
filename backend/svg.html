@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SVG 流程连线（可拖拽节点 + 入/出锚点 + 可重连/取消 + 箭头优化）</title>
+  <style>
+    html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,"PingFang SC",sans-serif;background:#0f1724;color:#e6eef8}
+    .wrap{height:100%;display:flex;align-items:center;justify-content:center}
+    .board{width:980px;height:560px;background:linear-gradient(180deg,#071025 0%, #081328 100%);border-radius:12px;padding:14px;box-shadow:0 8px 30px rgba(2,6,23,.6);position:relative}
+    svg{width:100%;height:100%;touch-action:none;user-select:none}
+
+    .flow-node { cursor:grab; }
+    .node-rect { fill:#07203a; stroke:#0b84ff; stroke-width:2; rx:8; }
+    .node-label { font-size:13px; fill:#bcd4ff; pointer-events:none }
+
+    .anchor { fill:#fff; stroke:#0b84ff; stroke-width:1; r:6; }
+    .anchor.in { fill:#fff; stroke:#ff8a00; }
+    .anchor.out { fill:#fff; stroke:#00d27a; }
+    .anchor.hit { fill-opacity:0; r:12 }
+
+    .path { fill:none; stroke:#00b4ff; stroke-width:6; stroke-linecap:round; filter:drop-shadow(0 2px 6px rgba(0,180,255,.12)); }
+    .path.temp { stroke-dasharray:8 6; opacity:0.9 }
+
+    /* 箭头：更小，位于路径上的独立元素（不使用 marker-end） */
+    .arrow { fill:#00b4ff; stroke:none; opacity:1; transform-origin: 0 0; }
+
+    .endpoint { fill:#ffffff; stroke:#0077cc; stroke-width:2; r:6; cursor:pointer }
+    .endpoint.dragging{ stroke:#ffcc00 }
+
+    .info{position:absolute;left:16px;top:8px;color:#9fb9ff;font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="board">
+      <div class="info">拖动节点移动；从物体右侧的“输出(out)”锚点拖到另一个物体左侧的“输入(in)”锚点以创建连线（只允许 out → in）。已连接的连线两端有可拖拽小点：拖到非点区域可取消连接，拖到其他合法锚点可重连。双击连线可删除。箭头已缩小并绘制在曲线中间位置。</div>
+      <svg id="svg" viewBox="0 0 980 560" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <!-- 仍保留 marker 定义以防需要，但目前不使用 marker-end，而是绘制独立小三角作为箭头 -->
+          <marker id="arrowMarker" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,5 L0,10 z" fill="#00b4ff" />
+          </marker>
+        </defs>
+
+        <!-- 容器：节点和连线都会放在这里 -->
+        <g id="layer"></g>
+
+      </svg>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const svg = document.getElementById('svg');
+      const layer = document.getElementById('layer');
+
+      // --- 数据模型 ---
+      const nodes = {
+        A: { id: 'A', x: 160, y: 120, w: 140, h: 64, label: 'A' },
+        B: { id: 'B', x: 560, y: 100, w: 140, h: 64, label: 'B' },
+        C: { id: 'C', x: 360, y: 320, w: 140, h: 64, label: 'C' }
+      };
+
+      // connectors: {from, to, el:path, arrow:el, handleFrom, handleTo}
+      const connectors = [];
+
+      let tempPath = null;
+      let connecting = null; // { fromId }
+
+      // endpoint-drag state
+      let endpointDrag = null; // { conn, which: 'from'|'to', pointerId }
+
+      // 防抖渲染
+      let needsRender = false;
+      function scheduleRender(){ if(!needsRender){ needsRender = true; requestAnimationFrame(render); } }
+
+      // 创建节点元素
+      function createNodeEl(n){
+        const g = document.createElementNS(svg.namespaceURI, 'g');
+        g.classList.add('flow-node');
+        g.dataset.id = n.id;
+
+        const rect = document.createElementNS(svg.namespaceURI, 'rect');
+        rect.classList.add('node-rect');
+        rect.setAttribute('width', n.w);
+        rect.setAttribute('height', n.h);
+        rect.setAttribute('x', -n.w/2);
+        rect.setAttribute('y', -n.h/2);
+        g.appendChild(rect);
+
+        const t = document.createElementNS(svg.namespaceURI, 'text');
+        t.classList.add('node-label');
+        t.setAttribute('x', 0);
+        t.setAttribute('y', 6);
+        t.setAttribute('text-anchor', 'middle');
+        t.textContent = n.label;
+        g.appendChild(t);
+
+        // 左侧输入(in)
+        const inAnchor = document.createElementNS(svg.namespaceURI, 'circle');
+        inAnchor.classList.add('anchor','in'); inAnchor.dataset.type='in'; inAnchor.dataset.node=n.id;
+        inAnchor.setAttribute('r',6); inAnchor.setAttribute('cx', -n.w/2 - 10); inAnchor.setAttribute('cy', 0);
+        g.appendChild(inAnchor);
+
+        // 右侧输出(out)
+        const outAnchor = document.createElementNS(svg.namespaceURI, 'circle');
+        outAnchor.classList.add('anchor','out'); outAnchor.dataset.type='out'; outAnchor.dataset.node=n.id;
+        outAnchor.setAttribute('r',6); outAnchor.setAttribute('cx', n.w/2 + 10); outAnchor.setAttribute('cy', 0);
+        g.appendChild(outAnchor);
+
+        // hit 区
+        const inHit = document.createElementNS(svg.namespaceURI, 'circle'); inHit.classList.add('anchor','hit'); inHit.dataset.type='in'; inHit.dataset.node=n.id;
+        inHit.setAttribute('r',12); inHit.setAttribute('cx', -n.w/2 - 10); inHit.setAttribute('cy', 0); inHit.setAttribute('fill-opacity',0);
+        g.appendChild(inHit);
+        const outHit = document.createElementNS(svg.namespaceURI, 'circle'); outHit.classList.add('anchor','hit'); outHit.dataset.type='out'; outHit.dataset.node=n.id;
+        outHit.setAttribute('r',12); outHit.setAttribute('cx', n.w/2 + 10); outHit.setAttribute('cy', 0); outHit.setAttribute('fill-opacity',0);
+        g.appendChild(outHit);
+
+        bindNodeDrag(g, n.id);
+        [inAnchor, inHit, outAnchor, outHit].forEach(a=>a.addEventListener('pointerdown', anchorPointerDown));
+        return g;
+      }
+
+      function init(){
+        layer.innerHTML = '';
+        // 添加 node 元素
+        for(const id in nodes){ layer.appendChild(createNodeEl(nodes[id])); }
+        render();
+      }
+
+      function getAnchorPos(nodeId, type){
+        const n = nodes[nodeId]; if(!n) return null;
+        return type === 'in' ? { x: n.x - n.w/2 - 10, y: n.y } : { x: n.x + n.w/2 + 10, y: n.y };
+      }
+
+      // 计算控制点偏移
+      function computeControlOffset(x1,y1,x2,y2){ const dx = x2-x1; const base = Math.abs(dx)*0.5; return Math.max(40, Math.min(base,200)); }
+
+      // 根据两个端点返回曲线控制点集合
+      function getCurvePoints(p1,p2){
+        const offset = computeControlOffset(p1.x,p1.y,p2.x,p2.y);
+        return {
+          x1: p1.x, y1: p1.y,
+          c1x: p1.x + offset, c1y: p1.y,
+          c2x: p2.x - offset, c2y: p2.y,
+          x2: p2.x, y2: p2.y
+        };
+      }
+
+      function makePathD(p1,p2){ const pts = getCurvePoints(p1,p2); return `M ${pts.x1} ${pts.y1} C ${pts.c1x} ${pts.c1y}, ${pts.c2x} ${pts.c2y}, ${pts.x2} ${pts.y2}`; }
+
+      // 计算三次贝塞尔上 t 的点
+      function cubicPoint(t, pts){
+        const u = 1 - t;
+        const x = u*u*u*pts.x1 + 3*u*u*t*pts.c1x + 3*u*t*t*pts.c2x + t*t*t*pts.x2;
+        const y = u*u*u*pts.y1 + 3*u*u*t*pts.c1y + 3*u*t*t*pts.c2y + t*t*t*pts.y2;
+        return { x, y };
+      }
+
+      // 计算三次贝塞尔的切线（导数）
+      function cubicTangent(t, pts){
+        const u = 1 - t;
+        const dx = 3*u*u*(pts.c1x - pts.x1) + 6*u*t*(pts.c2x - pts.c1x) + 3*t*t*(pts.x2 - pts.c2x);
+        const dy = 3*u*u*(pts.c1y - pts.y1) + 6*u*t*(pts.c2y - pts.c1y) + 3*t*t*(pts.y2 - pts.c2y);
+        return { x: dx, y: dy };
+      }
+
+      // 创建连接并附带端点 handle 与箭头
+      function createConnector(fromId, toId){
+        if(fromId === toId) return null;
+        if(connectors.some(c=>c.from===fromId && c.to===toId)) return null;
+
+        const path = document.createElementNS(svg.namespaceURI,'path'); path.classList.add('path');
+        path.addEventListener('dblclick',()=>{ removeConnector(conn); });
+
+        // arrow element（独立放在路径上）
+        const arrow = document.createElementNS(svg.namespaceURI,'path'); arrow.classList.add('arrow');
+        // 基本三角形（指向右侧），后续使用 transform 平移和旋转
+        arrow.setAttribute('d', 'M -8 -5 L 0 0 L -8 5 Z');
+
+        // handle circles（放在节点之上）
+        const hFrom = document.createElementNS(svg.namespaceURI,'circle'); hFrom.classList.add('endpoint'); hFrom.dataset.which='from';
+        const hTo   = document.createElementNS(svg.namespaceURI,'circle'); hTo.classList.add('endpoint'); hTo.dataset.which='to';
+
+        // attach pointer events
+        hFrom.addEventListener('pointerdown', endpointPointerDown);
+        hTo.addEventListener('pointerdown', endpointPointerDown);
+
+        // insert path under nodes, arrow above path, handles on top
+        layer.insertBefore(path, layer.firstChild);
+        layer.appendChild(arrow);
+        layer.appendChild(hFrom);
+        layer.appendChild(hTo);
+
+        const conn = { from: fromId, to: toId, el: path, arrow: arrow, handleFrom: hFrom, handleTo: hTo };
+        connectors.push(conn);
+        updateConnector(conn);
+        return conn;
+      }
+
+      function removeConnector(conn){
+        const idx = connectors.indexOf(conn); if(idx>=0) connectors.splice(idx,1);
+        if(conn.el) conn.el.remove(); if(conn.arrow) conn.arrow.remove(); if(conn.handleFrom) conn.handleFrom.remove(); if(conn.handleTo) conn.handleTo.remove();
+      }
+
+      function updateConnector(conn){
+        const p1 = getAnchorPos(conn.from,'out');
+        const p2 = getAnchorPos(conn.to,'in');
+        const pts = getCurvePoints(p1,p2);
+        const d = `M ${pts.x1} ${pts.y1} C ${pts.c1x} ${pts.c1y}, ${pts.c2x} ${pts.c2y}, ${pts.x2} ${pts.y2}`;
+        conn.el.setAttribute('d', d);
+        // place handles at anchor points
+        conn.handleFrom.setAttribute('cx', p1.x); conn.handleFrom.setAttribute('cy', p1.y);
+        conn.handleTo.setAttribute('cx', p2.x); conn.handleTo.setAttribute('cy', p2.y);
+
+        // 计算箭头位置：取曲线上的一个 t（0.78~0.9 之间，避免与端点重合）
+        const t = 0.82;
+        const pos = cubicPoint(t, pts);
+        const tan = cubicTangent(t, pts);
+        const angle = Math.atan2(tan.y, tan.x) * 180 / Math.PI;
+        // 缩小箭头并放置在路径上
+        const scale = 0.6; // 缩放因子，可以调小
+        conn.arrow.setAttribute('transform', `translate(${pos.x},${pos.y}) rotate(${angle}) scale(${scale})`);
+      }
+
+      function updateAllConnectors(){ connectors.forEach(updateConnector); }
+
+      function render(){
+        // update nodes
+        const nodeEls = layer.querySelectorAll('g.flow-node');
+        nodeEls.forEach(g=>{ const id = g.dataset.id; const n = nodes[id]; g.setAttribute('transform', `translate(${n.x},${n.y})`); });
+        updateAllConnectors(); needsRender=false;
+      }
+
+      // node drag (unchanged)
+      function bindNodeDrag(g,nodeId){
+        let dragging=false, pid=null, start=null;
+        g.addEventListener('pointerdown', ev=>{ if(ev.target.dataset && (ev.target.dataset.type==='in'||ev.target.dataset.type==='out')) return; ev.stopPropagation(); ev.preventDefault(); pid=ev.pointerId; g.setPointerCapture(pid); dragging=true; start=clientToSvgPoint(ev.clientX, ev.clientY); });
+        svg.addEventListener('pointermove', ev=>{ if(!dragging) return; const p=clientToSvgPoint(ev.clientX, ev.clientY); const dx=p.x-start.x, dy=p.y-start.y; nodes[nodeId].x+=dx; nodes[nodeId].y+=dy; start=p; scheduleRender(); });
+        g.addEventListener('pointerup', ev=>{ if(pid!==ev.pointerId) return; g.releasePointerCapture(pid); dragging=false; pid=null; start=null; });
+        g.addEventListener('pointercancel', ev=>{ if(pid!==ev.pointerId) return; g.releasePointerCapture(pid); dragging=false; pid=null; start=null; });
+      }
+
+      // anchor down to start a fresh connection (out -> ...)
+      function anchorPointerDown(ev){
+        ev.stopPropagation(); ev.preventDefault();
+        const type = ev.target.dataset.type; const nodeId = ev.target.dataset.node;
+        if(type !== 'out') return; // only start from out
+        connecting = { from: nodeId };
+        tempPath = document.createElementNS(svg.namespaceURI,'path'); tempPath.classList.add('path','temp'); layer.insertBefore(tempPath, layer.firstChild);
+        svg.setPointerCapture(ev.pointerId);
+
+        function onMove(e){ const p1 = getAnchorPos(connecting.from,'out'); const curr = clientToSvgPoint(e.clientX,e.clientY); tempPath.setAttribute('d', makePathD(p1,curr)); }
+        function onUp(e){ svg.removeEventListener('pointermove', onMove); svg.removeEventListener('pointerup', onUp); svg.removeEventListener('pointercancel', onUp);
+          const target = document.elementFromPoint(e.clientX, e.clientY);
+          if(target && target.dataset && target.dataset.type === 'in'){ const toId = target.dataset.node; if(toId && toId !== connecting.from) createConnector(connecting.from, toId); }
+          if(tempPath){ tempPath.remove(); tempPath=null; }
+          connecting=null;
+        }
+        svg.addEventListener('pointermove', onMove); svg.addEventListener('pointerup', onUp); svg.addEventListener('pointercancel', onUp);
+      }
+
+      // endpoint pointer down: start dragging an existing connector end
+      function endpointPointerDown(ev){
+        ev.stopPropagation(); ev.preventDefault();
+        const which = ev.target.dataset.which; // 'from' or 'to'
+        // find the connector
+        const handle = ev.target;
+        const conn = connectors.find(c => c.handleFrom === handle || c.handleTo === handle);
+        if(!conn) return;
+
+        const pointerId = ev.pointerId;
+        endpointDrag = { conn, which, pointerId };
+        handle.classList.add('dragging');
+        svg.setPointerCapture(pointerId);
+
+        // show temp path during drag and hide original path a bit
+        conn.el.style.opacity = '0.25';
+        if(conn.arrow) conn.arrow.style.opacity = '0.25';
+        tempPath = document.createElementNS(svg.namespaceURI,'path'); tempPath.classList.add('path','temp'); layer.insertBefore(tempPath, layer.firstChild);
+
+        function onMove(e){
+          const curr = clientToSvgPoint(e.clientX,e.clientY);
+          if(endpointDrag.which === 'from'){
+            const p2 = getAnchorPos(conn.to,'in');
+            tempPath.setAttribute('d', makePathD(curr, p2));
+            // move visual handle
+            conn.handleFrom.setAttribute('cx', curr.x); conn.handleFrom.setAttribute('cy', curr.y);
+          } else {
+            const p1 = getAnchorPos(conn.from,'out');
+            tempPath.setAttribute('d', makePathD(p1, curr));
+            conn.handleTo.setAttribute('cx', curr.x); conn.handleTo.setAttribute('cy', curr.y);
+          }
+        }
+
+        function onUp(e){
+          svg.removeEventListener('pointermove', onMove);
+          svg.removeEventListener('pointerup', onUp);
+          svg.removeEventListener('pointercancel', onUp);
+
+          // detect target under pointer
+          const target = document.elementFromPoint(e.clientX, e.clientY);
+          let success = false;
+          if(target && target.dataset){
+            const ttype = target.dataset.type; const tnode = target.dataset.node;
+            if(endpointDrag.which === 'to' && ttype === 'in' && tnode && tnode !== conn.from){
+              // reassign to
+              // prevent duplicate
+              if(!connectors.some(c => c !== conn && c.from === conn.from && c.to === tnode)){
+                conn.to = tnode; success = true;
+              }
+            }
+            if(endpointDrag.which === 'from' && ttype === 'out' && tnode && tnode !== conn.to){
+              if(!connectors.some(c => c !== conn && c.from === tnode && c.to === conn.to)){
+                conn.from = tnode; success = true;
+              }
+            }
+          }
+
+          // 如果没有放到合法锚点上，认为是取消连接 -> 删除
+          if(!success){ removeConnector(conn); }
+
+          // cleanup
+          if(tempPath){ tempPath.remove(); tempPath=null; }
+          if(conn && conn.el) conn.el.style.opacity = '';
+          if(conn && conn.arrow) conn.arrow.style.opacity = '';
+          if(conn && conn.handleFrom) conn.handleFrom.classList.remove('dragging');
+          if(conn && conn.handleTo) conn.handleTo.classList.remove('dragging');
+          endpointDrag = null;
+          scheduleRender();
+        }
+
+        svg.addEventListener('pointermove', onMove);
+        svg.addEventListener('pointerup', onUp);
+        svg.addEventListener('pointercancel', onUp);
+      }
+
+      // client -> svg point
+      function clientToSvgPoint(clientX, clientY){ const pt = svg.createSVGPoint(); pt.x = clientX; pt.y = clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); }
+
+      init();
+    })();
+  </script>
+</body>
+</html>

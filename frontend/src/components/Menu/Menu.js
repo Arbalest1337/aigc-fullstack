@@ -32,7 +32,7 @@ export default function Menu() {
       <div className={`p-6 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
         {!isCollapsed && (
           <div className="flex flex-col">
-            <span className="text-xl font-black tracking-tighter text-white">CORE</span>
+            <span className="text-xl font-black tracking-tighter text-white">ARBALEST</span>
             <span className="text-[10px] font-mono tracking-[0.2em] text-gray-400">DASHBOARD</span>
           </div>
         )}

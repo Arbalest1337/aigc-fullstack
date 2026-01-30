@@ -18,6 +18,14 @@ export enum MurekaTaskStatus {
   CANCELLED = 'cancelled'
 }
 
+export const MurekaTaskInPending = [
+  MurekaTaskStatus.PREPARING,
+  MurekaTaskStatus.QUEUED,
+  MurekaTaskStatus.RUNNING,
+  MurekaTaskStatus.STREAMING,
+  MurekaTaskStatus.REVIEWING
+]
+
 export const generateMurekaSong = async ({ lyrics, prompt = '' }) => {
   const url = `${BASE_URL}/v1/song/generate`
   const res = await fetch(url, {
@@ -30,6 +38,7 @@ export const generateMurekaSong = async ({ lyrics, prompt = '' }) => {
     })
   })
   const data = await res.json()
+  console.log(data)
   if (!res.ok) throw new InternalServerErrorException(data)
   return data
 }
